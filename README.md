@@ -1,6 +1,8 @@
 # k8s-benchmark-test
 Estudo de comportamento de aplicações no k8s
 
+Cada tópico importante é adicionado na [wiki](https://github.com/hurbcom/k8s-benchmark-tests/wiki/home)
+
 
 
 ## Multiplas threads dentro de um container ou 1 thread só quando há autoscaling?
