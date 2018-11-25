@@ -6,8 +6,8 @@ Cada tópico importante é adicionado na [wiki](https://github.com/hurbcom/k8s-b
 
 
 ## Multiplas threads dentro de um container ou 1 thread só quando há autoscaling?
-- [ ] múltiplas threads
-- [ ] 1 thread
+- [ ] múltiplas threads -> logs: [local docker](https://github.com/hurbcom/k8s-benchmark-tests/wiki/stress-multi-thread#local) e [gce](https://github.com/hurbcom/k8s-benchmark-tests/wiki/stress-multi-thread#gce)
+- [ ] 1 thread -> logs: [local docker](https://github.com/hurbcom/k8s-benchmark-tests/wiki/stress-single-thread#local) e [gce](https://github.com/hurbcom/k8s-benchmark-tests/wiki/stress-single-thread#gce)
 
 
 ## Comportamento de request/limit das aplicações (kubernetes 1.x)
