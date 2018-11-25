@@ -1,0 +1,18 @@
+FROM node:10.13-slim AS base
+	ENV APPDIR /usr/hu
+    ENV PORT 8080
+	EXPOSE $PORT
+	RUN useradd -ms /bin/sh -d $APPDIR hu
+	WORKDIR $APPDIR
+
+FROM base AS release
+    ENV TINI_VERSION v0.18.0
+    ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+    RUN chmod +x /tini
+    ENTRYPOINT ["/tini", "--"]
+
+    COPY --chown=hu . $APPDIR
+    # Not running process with root (hardening)
+    USER hu
+    RUN npm install
+    CMD ["./node_modules/.bin/naught","start","--worker-count","auto","--daemon-mode","false","server.js"]

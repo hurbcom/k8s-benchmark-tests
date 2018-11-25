@@ -1,0 +1,14 @@
+{
+    "name": "single-vs-multi",
+    "version": "0.0.1",
+    "description": "Test mutiple vs single threads in Kubernetes",
+    "main": "server.js",
+    "scripts": {
+        "multithread": "./node_modules/.bin/naught start --worker-count auto --daemon-mode false --stdout - --stderr - --log - server.js",
+        "singlethread": "node server.js",
+        "postversion": "git push --follow-tags"
+    },
+    "dependencies": {
+      "naught": "1.6.0"
+    }
+  }
