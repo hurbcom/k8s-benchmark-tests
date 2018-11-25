@@ -6,6 +6,8 @@ Cada tópico importante é adicionado na [wiki](https://github.com/hurbcom/k8s-b
 
 
 ## Multiplas threads dentro de um container ou 1 thread só quando há autoscaling?
+O ponto aqui é não é a taxa de requests mas sim o comportamento do container, lembrando que o uso de memória da aplicação é multiplicado pela quantidade de threads. Se for definido o  número de threads for 8 e o máximo de memória da aplicação for de 1GB, a aplicação tentará usar 8GB e se o limit configurado for de 1GB as threads vão ser killadas pois pasarrá de 1GB configurado.
+
 - [ ] múltiplas threads -> logs: [local docker](https://github.com/hurbcom/k8s-benchmark-tests/wiki/stress-multi-thread#local) e [gce](https://github.com/hurbcom/k8s-benchmark-tests/wiki/stress-multi-thread#gce)
 - [ ] 1 thread -> logs: [local docker](https://github.com/hurbcom/k8s-benchmark-tests/wiki/stress-single-thread#local) e [gce](https://github.com/hurbcom/k8s-benchmark-tests/wiki/stress-single-thread#gce)
 
