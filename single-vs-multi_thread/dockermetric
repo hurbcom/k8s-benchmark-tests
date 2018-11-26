@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import re
+import time
+
+
+if (len(sys.argv) is 1):
+    print("Usage: %s CONTAINER_NAME [options]\nAvailable options:\n  -w      Wait for kubernete to change state " % sys.argv[0])
+    sys.exit(0)
+
+pod_name = sys.argv[1]
+wait = False
+if len(sys.argv) > 2:
+    wait = sys.argv[2] == '-w'
+
+command = 'docker stats --no-stream'
+if pod_name:
+    command += ' %s' % pod_name
+
+cpus = int(os.popen('docker info | grep CPUs').read().strip().split(': ')[1])
+loop = True
+try:
+    while loop:
+        output = os.popen(command).read().strip()
+        output = output.split("\n")[1:]
+        if len(output) != 1:
+            raise BaseException("Please inform a valid container name")
+
+        cpu = 0.0
+        mem = 0.0
+
+        cols = (' '.join(output[0].split())).split(' ')
+        cpu += eval(cols[2].replace('%', '*%s' % cpus))
+        mem += eval(cols[3].replace('MiB', ''))
+
+        cpu *= 100
+        cpu = '%sm' % int(cpu)
+        mem = '%sMi' % mem
+        print('%s %s %s' % (pod_name, cpu, mem))
+
+        if not wait:
+            loop = False
+        else:
+            time.sleep(3)
+except KeyboardInterrupt:
+    pass
+except:
+    raise

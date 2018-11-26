@@ -42,6 +42,7 @@ if [[ "$ENVIRONMENT" == "local" ]]; then
     URL=http://${TAG}.hud:8080/
 else
     touch .running
+    echo "WARNING: CPU and Memory limits should be configured in Kubernetes"
     if [[ "$TYPE" == "single" ]]; then
         URL=http://kubesbenchsingle.kube.prod.gce.hucloud.com.br/
     else

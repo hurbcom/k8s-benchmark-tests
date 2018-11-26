@@ -30,7 +30,7 @@ if pod_name:
 loop = True
 try:
     while loop:
-        output = os.popen("kubectl top pods | grep %s" % pod_name).read()
+        output = os.popen(command).read()
         if summarized:
             output = output.split("\n")
             lines = len(output)
