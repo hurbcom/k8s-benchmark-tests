@@ -22,7 +22,7 @@ if len(sys.argv) > 2:
         if summarized and sys.argv[2] != '-w':
             wait = sys.argv[3] == '-w'
 
-command = 'kubectl get pods'
+command = 'kubectl top pods'
 if pod_name:
     command += '| grep %s' % pod_name
 
