@@ -1,0 +1,61 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import re
+import time
+
+
+if (len(sys.argv) is 1):
+    print("Usage: %s POD_NAME_PREFIX [options]\nAvailable options:\n  -s      Summarizes pod statictics\n  -w      Wait for kubernete to change state " % sys.argv[0])
+    sys.exit(0)
+
+pod_name = sys.argv[1]
+wait = False
+summarized = False
+if len(sys.argv) > 2:
+    summarized = sys.argv[2] == '-s'
+    wait = sys.argv[2] == '-w'
+    if len(sys.argv) > 3:
+        if wait:
+            summarized = sys.argv[3] == '-s'
+        if summarized and sys.argv[2] != '-w':
+            wait = sys.argv[3] == '-w'
+
+command = 'kubectl get pods'
+if pod_name:
+    command += '| grep %s' % pod_name
+
+
+loop = True
+try:
+    while loop:
+        output = os.popen("kubectl top pods | grep %s" % pod_name).read()
+        if summarized:
+            output = output.split("\n")
+            lines = len(output)
+            cpu = 0.0
+            mem = 0.0
+            for line in output:
+                cols = (' '.join(line.split())).split(' ')
+                if len(cols) is 3:
+                    cpu += eval(cols[1].replace('m', '*0.01'))
+                    mem += eval(cols[2].replace('Mi','').replace('Gi', '*1000'))
+            cpu /= lines
+            mem /= lines
+            cpu *= 100
+            cpu = '%sm' % int(cpu)
+            mem = '%sMi' % int(mem)
+            print('%s %s %s' % (pod_name, cpu, mem))
+
+        else:
+            print(output)
+
+        if not wait:
+            loop = False
+        else:
+            time.sleep(3)
+except KeyboardInterrupt:
+    pass
+except:
+    raise
