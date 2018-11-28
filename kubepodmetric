@@ -33,19 +33,20 @@ def getHpa(data, podName):
         name = item['metadata']['name'].encode('utf8')
         if name.find(podName) > -1:
             if item['status']['currentReplicas'] > 0:
-                return item['spec']['targetCPUUtilizationPercentage']
+                return float(item['spec']['targetCPUUtilizationPercentage'])
 
 hpaCluster = getHpa(json.loads(os.popen('kubectl get hpa -o=json').read())['items'], pod_name)
-cpusL = False
-cpusR = False
-memsL = False
-memsR = False
+cpusL = 0.0
+cpusR = 0.0
+memsL = 0.0
+memsR = 0.0
+nameColLength = 30
 
 loop = True
 describeOutput = False
 try:
     if summarized:
-        print('\tPOD\tCPU\tMEMORY\tQTY\tHPA\tLimCPU\tLimMEM\tLimHPA')
+        print('POD%s\tCPU\tMEMORY\tQTY\tHPA\tLimCPU\tLimMEM\tLimHPA' % (' ' * (nameColLength - 3)))
 
     while loop:
         output = os.popen(command).read()
@@ -62,24 +63,28 @@ try:
                     describeOutput = True
                     os.popen('kubectl describe pods %s > /tmp/kubepodmetric_describe' % cols[0])
                     cpus = os.popen('cat /tmp/kubepodmetric_describe | grep cpu | tail -n3').read().strip().split("\n")
+                    mems = os.popen('cat /tmp/kubepodmetric_describe | grep memory | tail -n3').read().strip().split("\n")
+                    os.unlink('/tmp/kubepodmetric_describe')
                     for line in cpus:
-                        line = line.replace(' ','')
-                        if line == 'cpu:100m':
+                        if line == '' or line[0] != ' ':
                             continue
-                        if not cpusL:
+                        line = line.replace(' ','')
+                        # if line == 'cpu:100m':
+                        #     continue
+                        if cpusL == 0.0:
                             cpusL = eval(line.split(':')[1].replace('m', '*0.01'))
                             continue
-                        if not cpusR:
+                        if cpusR == 0.0:
                             cpusR = eval(line.split(':')[1].replace('m', '*0.01'))
 
-
-                    mems = os.popen('cat /tmp/kubepodmetric_describe | grep memory | tail -n3').read().strip().split("\n")
                     for line in mems:
+                        if line == '' or line[0] != ' ':
+                            continue
                         line = line.replace(' ','')
-                        if not memsL:
+                        if memsL == 0.0:
                             memsL = eval(line.split(':')[1].replace('Mi','').replace('Gi', '*1000'))
                             continue
-                        if not memsR and memsL:
+                        if memsR == 0.0 and memsL > 0:
                             memsR = eval(line.split(':')[1].replace('Mi','').replace('Gi', '*1000'))
 
                 if len(cols) is 3:
@@ -95,17 +100,26 @@ try:
             cpu /= lines
             mem /= lines
 
-            hpa = cpu/cpusR
+            pHpa = '-'
+            pCpu = '-'
+            pMem = '-'
 
-            pCpu = cpuMax / cpusL
-            pMem = memMax / memsL
+            if hpaCluster is None or cpusR == 0:
+                hpa = 'NoAS'
+            else:
+                hpa = cpu/cpusR
+                hpa = int(hpa * 100)
+                pHpa = int(100*hpa/hpaCluster)
+    
+            if cpusL > 0:                
+                pCpu = int(100 * cpuMax / cpusL)
+
+            if memsL > 0:
+                pMem = int(100 * memMax / memsL)
 
             cpu *= 100
-            hpa *= 100
-            pCpu *= 100
-            pMem *= 100
-            pHpa = 100*hpa/hpaCluster
-            print('%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%\t%s%%' % (pod_name, int(cpu), int(mem), lines, int(hpa), int(pCpu), int(pMem), int(pHpa)))
+            pod_name += ' ' * (nameColLength - len(pod_name))
+            print('%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%\t%s%%' % (pod_name, int(cpu), int(mem), lines, hpa, pCpu, pMem, pHpa))
 
         else:
             print(output)
