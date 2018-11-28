@@ -63,7 +63,7 @@ else
     SUB_TAG=$(echo $TAG | cut -d-  -f1-2)
     echo -e "CPU\tMemory" > ${LOG_FILE}.csv
     while true; do
-        [ -f .running ] && (./kubepodmetric $SUB_TAG -s | cut -f2- -d" " | tr " " \\t)  >> ${LOG_FILE}.csv
+        [ -f .running ] && (../kubepodmetric $SUB_TAG -s | cut -f2- -d" " | tr " " \\t)  >> ${LOG_FILE}.csv
         [ -f .running ] || break
         sleep 1
     done &
