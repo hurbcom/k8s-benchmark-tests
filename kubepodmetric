@@ -4,10 +4,11 @@ import sys
 import os
 import re
 import time
+import json
 
 
 if (len(sys.argv) is 1):
-    print("Usage: %s POD_NAME_PREFIX [options]\nAvailable options:\n  -s      Summarizes pod statictics\n  -w      Wait for kubernete to change state " % sys.argv[0])
+    print("Usage: %s POD_NAME_PREFIX [options]\nAvailable options:\n  -s      Summarizes pod statictics\n  -w      Wait for kubernete to change state\n\nhttps://github.com/hurbcom/k8s-benchmark-tests/wiki/kubepodmetric" % sys.argv[0])
     sys.exit(0)
 
 pod_name = sys.argv[1]
@@ -27,11 +28,21 @@ if pod_name:
     command += '| grep %s' % pod_name
 
 
+def getHpa(data, podName):
+    for item in data:
+        name = item['metadata']['name'].encode('utf8')
+        if name.find(podName) > -1:
+            if item['status']['currentReplicas'] > 0:
+                return item['spec']['targetCPUUtilizationPercentage']
+
+hpaCluster = getHpa(json.loads(os.popen('kubectl get hpa -o=json').read())['items'], pod_name)
+
+
 loop = True
 describeOutput = False
 try:
     if summarized:
-        print('\tPOD\tCPU\tMEMORY\tQTY\tHPA\t%CPU\t%MEM')
+        print('\tPOD\tCPU\tMEMORY\tQTY\tHPA\tLimCPU\tLimMEM\tLimHPA')
 
     while loop:
         output = os.popen(command).read()
@@ -73,8 +84,8 @@ try:
                             memsR = eval(line.split(':')[1].replace('Mi','').replace('Gi', '*1000'))
 
                 if len(cols) is 3:
-                    cpuI = eval(cols[1].replace('m', '*0.01'))
-                    memI = eval(cols[2].replace('Mi','').replace('Gi', '*1000'))
+                    cpuI = float(eval(cols[1].replace('m', '*0.01')))
+                    memI = float(eval(cols[2].replace('Mi','').replace('Gi', '*1000')))
                     cpu += cpuI
                     mem += memI
                     if cpuI > cpuMax:
@@ -94,7 +105,8 @@ try:
             hpa *= 100
             pCpu *= 100
             pMem *= 100
-            print('%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%' % (pod_name, int(cpu), int(mem), lines, hpa, pCpu, pMem))
+            pHpa = 100*hpa/hpaCluster
+            print('%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%\t%s%%' % (pod_name, int(cpu), int(mem), lines, int(hpa), int(pCpu), int(pMem), int(pHpa)))
 
         else:
             print(output)
