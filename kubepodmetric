@@ -28,9 +28,11 @@ if pod_name:
 
 
 loop = True
+describeOutput = False
 try:
     if summarized:
-        print('\tPOD\tCPU\tMEMORY\tQTY')
+        print('\tPOD\tCPU\tMEMORY\tQTY\tHPA\t%CPU\t%MEM')
+
     while loop:
         output = os.popen(command).read()
         if summarized:
@@ -38,17 +40,61 @@ try:
             lines = len(output)
             cpu = 0.0
             mem = 0.0
+            cpuMax = 0.0
+            memMax = 0.0
+            cpusL = False
+            cpusR = False
+            memsL = False
+            memsR = False
             for line in output:
                 cols = (' '.join(line.split())).split(' ')
+                if not describeOutput:
+                    describeOutput = True
+                    os.popen('kubectl describe pods %s > /tmp/kubepodmetric_describe' % cols[0])
+                    cpus = os.popen('cat /tmp/kubepodmetric_describe | grep cpu | tail -n3').read().strip().split("\n")
+                    for line in cpus:
+                        line = line.replace(' ','')
+                        if line == 'cpu:100m':
+                            continue
+                        if not cpusL:
+                            cpusL = eval(line.split(':')[1].replace('m', '*0.01'))
+                            continue
+                        if not cpusR:
+                            cpusR = eval(line.split(':')[1].replace('m', '*0.01'))
+
+
+                    mems = os.popen('cat /tmp/kubepodmetric_describe | grep memory | tail -n3').read().strip().split("\n")
+                    for line in mems:
+                        line = line.replace(' ','')
+                        if not memsL:
+                            memsL = eval(line.split(':')[1].replace('Mi','').replace('Gi', '*1000'))
+                            continue
+                        if not memsR and memsL:
+                            memsR = eval(line.split(':')[1].replace('Mi','').replace('Gi', '*1000'))
+
                 if len(cols) is 3:
-                    cpu += eval(cols[1].replace('m', '*0.01'))
-                    mem += eval(cols[2].replace('Mi','').replace('Gi', '*1000'))
+                    cpuI = eval(cols[1].replace('m', '*0.01'))
+                    memI = eval(cols[2].replace('Mi','').replace('Gi', '*1000'))
+                    cpu += cpuI
+                    mem += memI
+                    if cpuI > cpuMax:
+                        cpuMax= cpuI
+                    if memI > memMax:
+                        memMax = memI
+
             cpu /= lines
             mem /= lines
+
+            hpa = cpu/cpusR
+
+            pCpu = cpuMax / cpusL
+            pMem = memMax / memsL
+
             cpu *= 100
-            cpu = '%sm' % int(cpu)
-            mem = '%sMi' % int(mem)
-            print('%s\t%s\t%s\t%s' % (pod_name, cpu, mem, lines))
+            hpa *= 100
+            pCpu *= 100
+            pMem *= 100
+            print('%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%' % (pod_name, int(cpu), int(mem), lines, hpa, pCpu, pMem))
 
         else:
             print(output)
