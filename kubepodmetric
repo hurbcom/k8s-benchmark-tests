@@ -36,7 +36,10 @@ def getHpa(data, podName):
                 return item['spec']['targetCPUUtilizationPercentage']
 
 hpaCluster = getHpa(json.loads(os.popen('kubectl get hpa -o=json').read())['items'], pod_name)
-
+cpusL = False
+cpusR = False
+memsL = False
+memsR = False
 
 loop = True
 describeOutput = False
@@ -53,10 +56,6 @@ try:
             mem = 0.0
             cpuMax = 0.0
             memMax = 0.0
-            cpusL = False
-            cpusR = False
-            memsL = False
-            memsR = False
             for line in output:
                 cols = (' '.join(line.split())).split(' ')
                 if not describeOutput:
