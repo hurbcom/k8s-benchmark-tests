@@ -8,10 +8,10 @@ import json
 
 
 if (len(sys.argv) is 1):
-    print("Usage: %s POD_NAME_PREFIX [options]\nAvailable options:\n  -s      Summarizes pod statictics\n  -w      Wait for kubernete to change state\n\nhttps://github.com/hurbcom/k8s-benchmark-tests/wiki/kubepodmetric" % sys.argv[0])
+    print("Usage: %s pod_prefix_PREFIX [options]\nAvailable options:\n  -s      Summarizes pod statictics\n  -w      Wait for kubernete to change state\n\nhttps://github.com/hurbcom/k8s-benchmark-tests/wiki/kubepodmetric" % sys.argv[0])
     sys.exit(0)
 
-pod_name = sys.argv[1]
+pod_prefix = sys.argv[1]
 wait = False
 summarized = False
 if len(sys.argv) > 2:
@@ -24,8 +24,8 @@ if len(sys.argv) > 2:
             wait = sys.argv[3] == '-w'
 
 command = 'kubectl top pods'
-if pod_name:
-    command += '| grep %s' % pod_name
+if pod_prefix:
+    command += '| grep %s' % pod_prefix
 
 
 def getHpa(data, podName):
@@ -35,7 +35,7 @@ def getHpa(data, podName):
             if item['status']['currentReplicas'] > 0:
                 return float(item['spec']['targetCPUUtilizationPercentage'])
 
-hpaCluster = getHpa(json.loads(os.popen('kubectl get hpa -o=json').read())['items'], pod_name)
+hpaCluster = getHpa(json.loads(os.popen('kubectl get hpa -o=json').read())['items'], pod_prefix)
 cpusL = 0.0
 cpusR = 0.0
 memsL = 0.0
@@ -44,13 +44,15 @@ nameColLength = 30
 
 loop = True
 describeOutput = False
+app_name = False
 try:
     if summarized:
-        print('POD%s\tCPU\tMEMORY\tQTY\tHPA\tLimCPU\tLimMEM\tLimHPA' % (' ' * (nameColLength - 3)))
+        print('APPNAME%s\tCPU\tMEMORY\tQTY\tHPA\tLimCPU\tLimMEM\tLimHPA' % (' ' * (nameColLength - 7)))
 
     while loop:
         output = os.popen(command).read()
         if summarized:
+            versions = []
             output = output.strip().split("\n")
             lines = len(output)
             cpu = 0.0
@@ -59,6 +61,17 @@ try:
             memMax = 0.0
             for line in output:
                 cols = (' '.join(line.split())).split(' ')
+                pod_name = cols[0]
+                pod_name_splitted = pod_name.split('-')
+                if not app_name:
+                    app_name = pod_name_splitted[0]
+                
+                if app_name != pod_name_splitted[0]:
+                    raise BaseException('Different apps were found with informed prefix. Prefix: "%s"  Apps found: "%s" and "%s"' % (pod_prefix, app_name, pod_name_splitted[0]))
+
+                if pod_name_splitted[1] not in versions:
+                    versions.append(pod_name_splitted[1])
+
                 if not describeOutput:
                     describeOutput = True
                     os.popen('kubectl describe pods %s > /tmp/kubepodmetric_describe' % cols[0])
@@ -118,8 +131,9 @@ try:
                 pMem = int(100 * memMax / memsL)
 
             cpu *= 100
-            pod_name += ' ' * (nameColLength - len(pod_name))
-            print('%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%\t%s%%' % (pod_name, int(cpu), int(mem), lines, hpa, pCpu, pMem, pHpa))
+            versions = ' (%s)' % ','.join(versions)
+            app_name_spacing = ' ' * (nameColLength - len(app_name) - len(versions))
+            print('%s%s%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%\t%s%%' % (app_name, versions, app_name_spacing, int(cpu), int(mem), lines, hpa, pCpu, pMem, pHpa))
 
         else:
             print(output)
