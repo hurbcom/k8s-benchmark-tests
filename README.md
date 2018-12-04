@@ -15,5 +15,5 @@ O ponto aqui é não é a taxa de requests mas sim o comportamento do container,
 ## Comportamento de request/limit das aplicações (kubernetes 1.x)
 - [X] request e limit de memória: **precisam ser iguais (não há autoscaling) para aplicações críticas**
 - [X] número mágico de limit de cpu para aplicações matemáticas, científicas ou IAs: **Acima de 1000m e abaixo de (número de cores da máquina mãe)x1000m**
-- [ ] Número mágico de limit de cpu
-- [ ] Número mágico de request de cpu
+- [X] Número mágico de limit de cpu: **depende da natureza da aplicação**
+- [X] Número mágico de request de cpu:  **depende da natureza da aplicação**
