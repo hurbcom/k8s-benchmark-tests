@@ -4,24 +4,34 @@ import sys
 import os
 import re
 import time
+import argparse
 
 
-if (len(sys.argv) is 1):
-    print("Usage: %s CONTAINER_NAME [options]\nAvailable options:\n  -w      Wait for kubernete to change state " % sys.argv[0])
-    sys.exit(0)
+parser = argparse.ArgumentParser(description='Fetch some useful pod Kubernetes statistics ')
+parser.add_argument('containerPrefix', metavar='CONTAINER_PREFIX_NAME', type=str,
+                   help='Container name prefix that should be measured')
+parser.add_argument('-w', dest='watch',
+                   default=False, action='store_true',
+                   help='Watch Docker to change state')
 
-pod_name = sys.argv[1]
-wait = False
+args = parser.parse_args()
+app_name = args.containerPrefix
+watch = args.watch
 if len(sys.argv) > 2:
-    wait = sys.argv[2] == '-w'
+    watch = sys.argv[2] == '-w'
+
 
 command = 'docker stats --no-stream'
-if pod_name:
-    command += ' %s' % pod_name
+if app_name:
+    command += ' %s' % app_name
+
+nameColLength = 30
 
 cpus = int(os.popen('docker info | grep CPUs').read().strip().split(': ')[1])
 loop = True
 try:
+    print('CONTAINER%s\tCPU\tMEMORY' % (' ' * (nameColLength - 9)))
+
     while loop:
         output = os.popen(command).read().strip()
         output = output.split("\n")[1:]
@@ -36,11 +46,10 @@ try:
         mem += eval(cols[3].replace('MiB', ''))
 
         cpu *= 100
-        cpu = '%sm' % int(cpu)
-        mem = '%sMi' % mem
-        print('%s %s %s' % (pod_name, cpu, mem))
+        app_name_spacing = ' ' * (nameColLength - len(app_name))
+        print('%s%s\t%sm\t%sMi' % (app_name, app_name_spacing, int(cpu), mem))
 
-        if not wait:
+        if not watch:
             loop = False
         else:
             time.sleep(3)
