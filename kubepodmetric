@@ -5,27 +5,7 @@ import os
 import re
 import time
 import json
-
-
-if (len(sys.argv) is 1):
-    print("Usage: %s pod_prefix_PREFIX [options]\nAvailable options:\n  -s      Summarizes pod statictics\n  -w      Wait for kubernete to change state\n\nhttps://github.com/hurbcom/k8s-benchmark-tests/wiki/kubepodmetric" % sys.argv[0])
-    sys.exit(0)
-
-pod_prefix = sys.argv[1]
-wait = False
-summarized = False
-if len(sys.argv) > 2:
-    summarized = sys.argv[2] == '-s'
-    wait = sys.argv[2] == '-w'
-    if len(sys.argv) > 3:
-        if wait:
-            summarized = sys.argv[3] == '-s'
-        if summarized and sys.argv[2] != '-w':
-            wait = sys.argv[3] == '-w'
-
-command = 'kubectl top pods'
-if pod_prefix:
-    command += '| grep %s' % pod_prefix
+import argparse
 
 
 def getHpa(data, podName):
@@ -34,6 +14,26 @@ def getHpa(data, podName):
         if name.find(podName) > -1:
             if item['status']['currentReplicas'] > 0:
                 return float(item['spec']['targetCPUUtilizationPercentage'])
+
+
+parser = argparse.ArgumentParser(description='Fetch some useful pod Kubernetes statistics ')
+parser.add_argument('podPrefix', metavar='POD_PREFIX_NAME', type=str,
+                   help='Pod name prefix that should be measured')
+parser.add_argument('-s', dest='sumarized',
+                   default=False, action='store_true',
+                   help='Summarizes pod metrics')
+parser.add_argument('-w', dest='watch',
+                   default=False, action='store_true',
+                   help='Watch Kubernetes to change state')
+
+args = parser.parse_args()
+pod_prefix = args.podPrefix
+watch = args.watch
+summarized = args.summarized
+
+command = 'kubectl top pods'
+if pod_prefix:
+    command += '| grep %s' % pod_prefix
 
 hpaCluster = getHpa(json.loads(os.popen('kubectl get hpa -o=json').read())['items'], pod_prefix)
 cpusL = 0.0
@@ -118,7 +118,7 @@ try:
             pMem = '-'
 
             if hpaCluster is None or cpusR == 0:
-                hpa = 'NoAS'
+                hpa = '-'
             else:
                 hpa = cpu/cpusR
                 hpa = int(hpa * 100)
@@ -138,10 +138,11 @@ try:
         else:
             print(output)
 
-        if not wait:
+        if not watch:
             loop = False
         else:
             time.sleep(3)
+
 except KeyboardInterrupt:
     pass
 except:
