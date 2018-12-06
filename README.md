@@ -17,3 +17,6 @@ O ponto aqui é não é a taxa de requests mas sim o comportamento do container,
 - [X] número mágico de limit de cpu para aplicações matemáticas, científicas ou IAs: **Acima de 1000m e abaixo de (número de cores da máquina mãe)x1000m**
 - [X] Número mágico de limit de cpu: **depende da natureza da aplicação**
 - [X] Número mágico de request de cpu:  **depende da natureza da aplicação**
+
+## kubepodmetric
+- [wiki](https://github.com/hurbcom/k8s-benchmark-tests/wiki/kubepodmetric)
