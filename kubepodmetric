@@ -19,7 +19,7 @@ def getHpa(data, podName):
 parser = argparse.ArgumentParser(description='Fetch some useful pod Kubernetes statistics ')
 parser.add_argument('podPrefix', metavar='POD_PREFIX_NAME', type=str,
                    help='Pod name prefix that should be measured')
-parser.add_argument('-s', dest='sumarized',
+parser.add_argument('-s', dest='summarized',
                    default=False, action='store_true',
                    help='Summarizes pod metrics')
 parser.add_argument('-w', dest='watch',
@@ -118,7 +118,8 @@ try:
             pMem = '-'
 
             if hpaCluster is None or cpusR == 0:
-                hpa = '-'
+                hpa = 0
+                pHpa = 0
             else:
                 hpa = cpu/cpusR
                 hpa = int(hpa * 100)
