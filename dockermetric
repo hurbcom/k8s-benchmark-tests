@@ -5,6 +5,8 @@ import os
 import re
 import time
 import argparse
+import json
+import math
 
 
 parser = argparse.ArgumentParser(description='Fetch some useful pod Kubernetes statistics ')
@@ -17,37 +19,50 @@ parser.add_argument('-w', dest='watch',
 args = parser.parse_args()
 app_name = args.containerPrefix
 watch = args.watch
-if len(sys.argv) > 2:
-    watch = sys.argv[2] == '-w'
-
-
-command = 'docker stats --no-stream'
-if app_name:
-    command += ' %s' % app_name
 
 nameColLength = 30
 
-cpus = int(os.popen('docker info | grep CPUs').read().strip().split(': ')[1])
+dockerInfo = json.loads(os.popen("docker info -f '{{json .}}'").read())
+cpus = dockerInfo['NCPU']
+
 loop = True
 try:
-    print('CONTAINER%s\tCPU\tMEMORY' % (' ' * (nameColLength - 9)))
+    print('CONTAINER%s\tCPU\tMEMORY\tLimCPU\tLimMEM' % (' ' * (nameColLength - 9)))
 
     while loop:
-        output = os.popen(command).read().strip()
-        output = output.split("\n")[1:]
-        if len(output) != 1:
-            raise BaseException("Please inform a valid container name")
+        info = os.popen("docker stats --no-stream --format '{{json .}}' %s" % app_name).read().strip()
+        info = info.split("\n")
+        if len(info) != 1:
+            raise BaseException("Please inform a valid container name")        
+        info = json.loads(info[0])
+
+        command = "docker inspect %s" % app_name
+        output = json.loads(os.popen(command).read().strip())
+        output = output[0]
 
         cpu = 0.0
         mem = 0.0
+        cpuMax = float(output['HostConfig']['CpuShares'])
+        memMax = output['HostConfig']['Memory']
+        
+        pMem = 0.0
+        cpu += eval(info['CPUPerc'].replace('%', '*%s' % cpus))
+        mem += eval(info['MemUsage'].split(' ')[0].replace('MiB', '').replace('GiB', '*1024'))
+        pMem = info['MemPerc']
 
-        cols = (' '.join(output[0].split())).split(' ')
-        cpu += eval(cols[2].replace('%', '*%s' % cpus))
-        mem += eval(cols[3].replace('MiB', ''))
+        if mem > 1024:
+            mem /= 1024
+            mem = '%sGi' % int(math.ceil(mem))
+        else:
+            mem = '%sMi' % int(math.ceil(mem))
+        
+        pCPU = 0
+        if cpuMax > 0:
+            pCPU = int(math.ceil((cpu / cpuMax)*100))
 
         cpu *= 100
         app_name_spacing = ' ' * (nameColLength - len(app_name))
-        print('%s%s\t%sm\t%sMi' % (app_name, app_name_spacing, int(cpu), mem))
+        print('%s%s\t%sm\t%s\t%s%%\t%s' % (app_name, app_name_spacing, int(math.ceil(cpu)), mem, pCPU, pMem))
 
         if not watch:
             loop = False

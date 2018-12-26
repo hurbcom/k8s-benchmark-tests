@@ -6,7 +6,7 @@ import re
 import time
 import json
 import argparse
-
+import math
 
 def getHpa(data, podName):
     for item in data:
@@ -134,7 +134,7 @@ try:
             cpu *= 100
             versions = ' (%s)' % ','.join(versions)
             app_name_spacing = ' ' * (nameColLength - len(app_name) - len(versions))
-            print('%s%s%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%\t%s%%' % (app_name, versions, app_name_spacing, int(cpu), int(mem), lines, hpa, pCpu, pMem, pHpa))
+            print('%s%s%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%\t%s%%' % (app_name, versions, app_name_spacing, int(math.ceil(cpu)), int(math.ceil(mem)), lines, hpa, pCpu, pMem, pHpa))
 
         else:
             print(output)
