@@ -27,11 +27,15 @@ parser.add_argument('-s', dest='summarized',
 parser.add_argument('-w', dest='watch',
                     default=False, action='store_true',
                     help='Watch Kubernetes to change state')
+parser.add_argument('-rh', dest='repeat_header',
+                    default=False, action='store_true',
+                    help='Repeat header every 10 summary lines')
 
 args = parser.parse_args()
 pod_prefix = args.podPrefix
 watch = args.watch
 summarized = args.summarized
+repeat_header = args.repeat_header
 
 command = 'kubectl top pods'
 if pod_prefix:
@@ -51,14 +55,14 @@ app_name = False
 summary_count = 0
 
 
-def print_summary():
+def print_header():
     print('APPNAME%s\tCPU\tMEMORY\tQTY\tHPA\tLimCPU\tLimMEM\tLimHPA' %
           (' ' * (nameColLength - 7)))
 
 
 try:
     if summarized:
-        print_summary()
+        print_header()
 
     while loop:
         output = os.popen(command).read()
@@ -159,8 +163,8 @@ try:
                 math.ceil(cpu)), int(math.ceil(mem)), lines, hpa, pCpu, pMem, pHpa))
 
             summary_count += 1
-            if summary_count >= 10:
-                print_summary()
+            if repeat_header and summary_count >= 10:
+                print_header()
                 summary_count = 0
 
         else:
