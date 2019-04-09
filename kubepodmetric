@@ -27,7 +27,7 @@ parser.add_argument('-s', dest='summarized',
 parser.add_argument('-w', dest='watch',
                     default=False, action='store_true',
                     help='Watch Kubernetes to change state')
-parser.add_argument('-rh', dest='repeat_header',
+parser.add_argument('-r', dest='repeat_header',
                     default=False, action='store_true',
                     help='Repeat header every 10 summary lines')
 
