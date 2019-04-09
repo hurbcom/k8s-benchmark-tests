@@ -8,6 +8,7 @@ import json
 import argparse
 import math
 
+
 def getHpa(data, podName):
     for item in data:
         name = item['metadata']['name'].encode('utf8')
@@ -16,26 +17,32 @@ def getHpa(data, podName):
                 return float(item['spec']['targetCPUUtilizationPercentage'])
 
 
-parser = argparse.ArgumentParser(description='Fetch some useful pod Kubernetes statistics ')
+parser = argparse.ArgumentParser(
+    description='Fetch some useful pod Kubernetes statistics ')
 parser.add_argument('podPrefix', metavar='POD_PREFIX_NAME', type=str,
-                   help='Pod name prefix that should be measured')
+                    help='Pod name prefix that should be measured')
 parser.add_argument('-s', dest='summarized',
-                   default=False, action='store_true',
-                   help='Summarizes pod metrics')
+                    default=False, action='store_true',
+                    help='Summarizes pod metrics')
 parser.add_argument('-w', dest='watch',
-                   default=False, action='store_true',
-                   help='Watch Kubernetes to change state')
+                    default=False, action='store_true',
+                    help='Watch Kubernetes to change state')
+parser.add_argument('-r', dest='repeat_header',
+                    default=False, action='store_true',
+                    help='Repeat header every 10 summary lines')
 
 args = parser.parse_args()
 pod_prefix = args.podPrefix
 watch = args.watch
 summarized = args.summarized
+repeat_header = args.repeat_header
 
 command = 'kubectl top pods'
 if pod_prefix:
     command += '| grep %s' % pod_prefix
 
-hpaCluster = getHpa(json.loads(os.popen('kubectl get hpa -o=json').read())['items'], pod_prefix)
+hpaCluster = getHpa(json.loads(
+    os.popen('kubectl get hpa -o=json').read())['items'], pod_prefix)
 cpusL = 0.0
 cpusR = 0.0
 memsL = 0.0
@@ -45,9 +52,17 @@ nameColLength = 30
 loop = True
 describeOutput = False
 app_name = False
+summary_count = 0
+
+
+def print_header():
+    print('APPNAME%s\tCPU\tMEMORY\tQTY\tHPA\tLimCPU\tLimMEM\tLimHPA' %
+          (' ' * (nameColLength - 7)))
+
+
 try:
     if summarized:
-        print('APPNAME%s\tCPU\tMEMORY\tQTY\tHPA\tLimCPU\tLimMEM\tLimHPA' % (' ' * (nameColLength - 7)))
+        print_header()
 
     while loop:
         output = os.popen(command).read()
@@ -65,48 +80,57 @@ try:
                 pod_name_splitted = pod_name.split('-')
                 if not app_name:
                     app_name = pod_name_splitted[0]
-                
+
                 if app_name != pod_name_splitted[0]:
-                    raise BaseException('Different apps were found with informed prefix. Prefix: "%s"  Apps found: "%s" and "%s"' % (pod_prefix, app_name, pod_name_splitted[0]))
+                    raise BaseException('Different apps were found with informed prefix. Prefix: "%s"  Apps found: "%s" and "%s"' % (
+                        pod_prefix, app_name, pod_name_splitted[0]))
 
                 if pod_name_splitted[1] not in versions:
                     versions.append(pod_name_splitted[1])
 
                 if not describeOutput:
                     describeOutput = True
-                    os.popen('kubectl describe pods %s > /tmp/kubepodmetric_describe' % cols[0])
-                    cpus = os.popen('cat /tmp/kubepodmetric_describe | grep cpu | tail -n3').read().strip().split("\n")
-                    mems = os.popen('cat /tmp/kubepodmetric_describe | grep memory | tail -n3').read().strip().split("\n")
+                    os.popen(
+                        'kubectl describe pods %s > /tmp/kubepodmetric_describe' % cols[0])
+                    cpus = os.popen(
+                        'cat /tmp/kubepodmetric_describe | grep cpu | tail -n3').read().strip().split("\n")
+                    mems = os.popen(
+                        'cat /tmp/kubepodmetric_describe | grep memory | tail -n3').read().strip().split("\n")
                     os.unlink('/tmp/kubepodmetric_describe')
                     for line in cpus:
                         if line == '' or line[0] != ' ':
                             continue
-                        line = line.replace(' ','')
+                        line = line.replace(' ', '')
                         # if line == 'cpu:100m':
                         #     continue
                         if cpusL == 0.0:
-                            cpusL = eval(line.split(':')[1].replace('m', '*0.01'))
+                            cpusL = eval(line.split(':')[
+                                         1].replace('m', '*0.01'))
                             continue
                         if cpusR == 0.0:
-                            cpusR = eval(line.split(':')[1].replace('m', '*0.01'))
+                            cpusR = eval(line.split(':')[
+                                         1].replace('m', '*0.01'))
 
                     for line in mems:
                         if line == '' or line[0] != ' ':
                             continue
-                        line = line.replace(' ','')
+                        line = line.replace(' ', '')
                         if memsL == 0.0:
-                            memsL = eval(line.split(':')[1].replace('Mi','').replace('Gi', '*1000'))
+                            memsL = eval(line.split(':')[1].replace(
+                                'Mi', '').replace('Gi', '*1000'))
                             continue
                         if memsR == 0.0 and memsL > 0:
-                            memsR = eval(line.split(':')[1].replace('Mi','').replace('Gi', '*1000'))
+                            memsR = eval(line.split(':')[1].replace(
+                                'Mi', '').replace('Gi', '*1000'))
 
                 if len(cols) is 3:
                     cpuI = float(eval(cols[1].replace('m', '*0.01')))
-                    memI = float(eval(cols[2].replace('Mi','').replace('Gi', '*1000')))
+                    memI = float(eval(cols[2].replace(
+                        'Mi', '').replace('Gi', '*1000')))
                     cpu += cpuI
                     mem += memI
                     if cpuI > cpuMax:
-                        cpuMax= cpuI
+                        cpuMax = cpuI
                     if memI > memMax:
                         memMax = memI
 
@@ -124,8 +148,8 @@ try:
                 hpa = cpu/cpusR
                 hpa = int(hpa * 100)
                 pHpa = int(100*hpa/hpaCluster)
-    
-            if cpusL > 0:                
+
+            if cpusL > 0:
                 pCpu = int(100 * cpuMax / cpusL)
 
             if memsL > 0:
@@ -133,8 +157,15 @@ try:
 
             cpu *= 100
             versions = ' (%s)' % ','.join(versions)
-            app_name_spacing = ' ' * (nameColLength - len(app_name) - len(versions))
-            print('%s%s%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%\t%s%%' % (app_name, versions, app_name_spacing, int(math.ceil(cpu)), int(math.ceil(mem)), lines, hpa, pCpu, pMem, pHpa))
+            app_name_spacing = ' ' * \
+                (nameColLength - len(app_name) - len(versions))
+            print('%s%s%s\t%sm\t%sMi\t%s\t%s%%\t%s%%\t%s%%\t%s%%' % (app_name, versions, app_name_spacing, int(
+                math.ceil(cpu)), int(math.ceil(mem)), lines, hpa, pCpu, pMem, pHpa))
+
+            summary_count += 1
+            if repeat_header and summary_count >= 10:
+                print_header()
+                summary_count = 0
 
         else:
             print(output)
