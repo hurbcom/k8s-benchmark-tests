@@ -79,53 +79,19 @@ try:
 
                 if not describeOutput:
                     describeOutput = True
-                    os.popen(
-                        'kubectl describe pods %s > /tmp/kubepodmetric_describe' % cols[0])
-                    cpus = os.popen(
-                        'cat /tmp/kubepodmetric_describe | grep cpu | tail -n3').read().strip().split("\n")
-                    mems = os.popen(
-                        'cat /tmp/kubepodmetric_describe | grep memory | tail -n3').read().strip().split("\n")
-                    os.unlink('/tmp/kubepodmetric_describe')
+                    cpuL = os.popen(
+                        'kubectl get pods %s -o custom-columns=:.spec.containers[0].resources.limits.cpu' % cols[0]).read().strip().split("\n")
+                    cpusL = eval(cpuL[0].replace('m', '*0.01'))
+                    cpuR = os.popen(
+                        'kubectl get pods %s -o custom-columns=:.spec.containers[0].resources.requests.cpu' % cols[0]).read().strip().split("\n")
+                    cpusR = eval(cpuR[0].replace('m', '*0.01'))
 
-                    cpuStripped = []
-                    for line in cpus:
-                        cpuStripped.append(line.strip())
-
-                    memStripped = []
-                    for line in mems:
-                        memStripped.append(line.strip())
-
-                    for line in cpuStripped:
-                        if line == '' or line[0] != 'c':
-                            continue
-                        line = line.replace(' ', '')
-                        i = 0
-                        if len(line) > 1 and line[0] != line[1]:
-                            i = 1
-
-                        if cpusL == 0.0:
-                            cpusL = eval(line.split(':')[
-                                         i].replace('m', '*0.01'))
-                            continue
-                        if cpusR == 0.0:
-                            cpusR = eval(line.split(':')[
-                                         i].replace('m', '*0.01'))
-
-                    for line in memStripped:
-                        if line == '' or line[0] != 'm':
-                            continue
-                        i = 0
-                        if len(line) > 1 and line[0] != line[1]:
-                            i = 1
-
-                        line = line.replace(' ', '')
-                        if memsL == 0.0:
-                            memsL = eval(line.split(':')[i].replace(
-                                'Mi', '').replace('Gi', '*1000'))
-                            continue
-                        if memsR == 0.0 and memsL > 0:
-                            memsR = eval(line.split(':')[i].replace(
-                                'Mi', '').replace('Gi', '*1000'))
+                    memL = os.popen(
+                        'kubectl get pods %s -o custom-columns=:.spec.containers[0].resources.limits.memory' % cols[0]).read().strip().split("\n")
+                    memsL = eval(memL[0].replace('Mi', '').replace('Gi', '*1000'))
+                    memR = os.popen(
+                        'kubectl get pods %s -o custom-columns=:.spec.containers[0].resources.requests.memory' % cols[0]).read().strip().split("\n")
+                    memsR = eval(memR[0].replace('Mi', '').replace('Gi', '*1000'))
 
                 if len(cols) is 3:
                     cpuI = float(eval(cols[1].replace('m', '*0.01')))
